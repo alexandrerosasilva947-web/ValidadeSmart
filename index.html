@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ValidadeSmart - Gestão e Ofertas</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    :root {
+      --bg-main: #f0f9ff;
+      --bg-card: #ffffff;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --success: #16a34a;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* Tela de Login / Chave */
+    #telaAuth {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+      margin-top: 40px;
+    }
+
+    .app-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 12px;
+      text-transform: uppercase;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 10px;
+      box-sizing: border-box;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      margin-top: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
+      transition: background 0.2s;
+    }
+
+    button:hover { background: var(--primary-hover); }
+    button.secondary { background: #e2e8f0; color: var(--text-main); box-shadow: none; }
+    button.secondary:hover { background: #cbd5e1; }
+    button.print-btn { background: #10b981; }
+
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      display: none;
+      margin-bottom: 12px;
+      border: 1px solid var(--primary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .status-urgente { background: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; }
+    .status-atencao { background: #fef3c7; color: var(--warning); border: 1px solid #fde68a; }
+    .status-ok { background: #dcfce7; color: var(--success); border: 1px solid #bbf7d0; }
+
+    .item-produto {
+      border-left: 5px solid var(--border);
+      margin-top: 12px;
+    }
+    .item-urgente { border-left-color: var(--danger); }
+    .item-atencao { border-left-color: var(--warning); }
+    .item-ok { border-left-color: var(--success); }
+
+    .preco-destaque {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: var(--primary);
+      margin-top: 6px;
+    }
+
+    .share-box {
+      background: #e0f2fe;
+      border: 1px dashed var(--primary);
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printableArea, #printableArea * { visibility: visible; }
+      #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- TELA DE AUTENTICAÇÃO -->
+  <div id="telaAuth" class="no-print">
+    <div class="app-title">📦 ValidadeSmart</div>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Insira sua chave de acesso administrativa para gerenciar o estoque ou clique abaixo para ver as ofertas públicas.</p>
+    
+    <label>Chave de Acesso:</label>
+    <input type="text" id="inputChave" placeholder="Digite sua chave">
+    <button onclick="validarChave()">Entrar no Painel</button>
+    <button class="secondary" onclick="entrarModoPublico()">Ver Produtos em Oferta (Público)</button>
+  </div>
+
+  <!-- APLICATIVO PRINCIPAL -->
+  <div id="appPrincipal" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h1 class="app-title" style="margin: 0; font-size: 1.3rem;">Painel de Controle</h1>
+      <button class="secondary" style="width: auto; padding: 6px 12px; margin: 0;" onclick="bloquearApp()">Sair</button>
+    </div>
+
+    <!-- Caixa de Compartilhamento de Link -->
+    <div class="share-box no-print">
+      <p style="margin: 0 0 8px 0; font-size: 0.85rem; font-weight: bold; color: #0369a1;">📢 Compartilhe as ofertas com clientes:</p>
+      <button onclick="copiarLinkPublico()" style="margin-top: 0; background: #0284c7; font-size: 0.85rem; padding: 8px;">🔗 Copiar Link de Acesso Público</button>
+    </div>
+
+    <div id="reader"></div>
+
+    <div class="card no-print" id="painelAdmin">
+      <button onclick="iniciarScanner()">📷 Escanear Código de Barras</button>
+      <button class="secondary" onclick="simularReconhecimentoIA()">🖼️ Auto-Preencher por Rótulo (IA)</button>
+
+      <form id="formProduto" onsubmit="salvarProduto(event)">
+        <label>Código de Barras:</label>
+        <input type="text" id="codigoBarra" placeholder="Escaneado ou digitado..." required onchange="buscarDadosBarcode(this.value)">
+
+        <label>Nome do Produto:</label>
+        <input type="text" id="nome" placeholder="Ex: Iogurte Natural 500g" required>
+
+        <label>Categoria:</label>
+        <select id="categoria">
+          <option value="Biscoito / Snack">Biscoito / Snack</option>
+          <option value="Refrigerante / Bebida">Refrigerante / Bebida</option>
+          <option value="Chocolate / Doces">Chocolate / Doces</option>
+          <option value="Laticínio">Laticínio</option>
+          <option value="Outros">Outros</option>
+        </select>
+
+        <label>Marca:</label>
+        <input type="text" id="marca" placeholder="Ex: Nestlé">
+
+        <label>Data de Validade:</label>
+        <input type="date" id="dataValidade" required>
+
+        <label>Preço Normal (R$):</label>
+        <input type="number" step="0.01" id="precoNormal" placeholder="10.00" required>
+
+        <label>Preço Mínimo / Custo (R$):</label>
+        <input type="number" step="0.01" id="precoMinimo" placeholder="5.00" required>
+
+        <button type="submit">➕ Adicionar ao Estoque</button>
+      </form>
+    </div>
+
+    <h2 id="tituloLista" style="font-size: 1.1rem; color: var(--primary);">📋 Estoque Monitorado & Sugestões</h2>
+    
+    <div id="printableArea">
+      <div id="listaProdutos"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Chave de acesso definida conforme solicitado
+  const CHAVE_MESTRA = "Hadardaracenter33";
+  let html5QrcodeScanner = null;
+  let produtosBD = JSON.parse(localStorage.getItem('validadesmart_db')) || [];
+  let modoPublico = false;
+
+  window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('modo') === 'publico') {
+      entrarModoPublico();
+    }
+  };
+
+  function validarChave() {
+    const digitada = document.getElementById('inputChave').value.trim();
+    if (digitada === CHAVE_MESTRA) {
+      modoPublico = false;
+      liberarInterface();
+    } else {
+      alert("❌ Chave de acesso inválida!");
+    }
+  }
+
+  function entrarModoPublico() {
+    modoPublico = true;
+    liberarInterface();
+  }
+
+  function liberarInterface() {
+    document.getElementById('telaAuth').style.display = 'none';
+    document.getElementById('appPrincipal').style.display = 'block';
+
+    if (modoPublico) {
+      document.getElementById('painelAdmin').style.display = 'none';
+      document.getElementById('tituloLista').innerText = "🔥 Produtos Próximos do Vencimento (Ofertas)";
+    } else {
+      document.getElementById('painelAdmin').style.display = 'block';
+      document.getElementById('tituloLista').innerText = "📋 Estoque Monitorado & Sugestões";
+    }
+    renderizarProdutos();
+  }
+
+  function bloquearApp() {
+    document.getElementById('appPrincipal').style.display = 'none';
+    document.getElementById('telaAuth').style.display = 'block';
+    document.getElementById('inputChave').value = '';
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  function copiarLinkPublico() {
+    const linkPublico = window.location.origin + window.location.pathname + '?modo=publico';
+    navigator.clipboard.writeText(linkPublico).then(() => {
+      alert("✅ Link público copiado com sucesso! Envie para seus clientes ou equipe.");
+    });
+  }
+
+  function iniciarScanner() {
+    const readerElem = document.getElementById('reader');
+    readerElem.style.display = 'block';
+    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render((decodedText) => {
+      document.getElementById('codigoBarra').value = decodedText;
+      buscarDadosBarcode(decodedText);
+      html5QrcodeScanner.clear();
+      readerElem.style.display = 'none';
+    });
+  }
+
+  async function buscarDadosBarcode(codigo) {
+    if (!codigo) return;
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${codigo}.json`);
+      const data = await response.json();
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        document.getElementById('nome').value = p.product_name || '';
+        document.getElementById('marca').value = p.brands || '';
+        alert("✅ Produto localizado na nuvem!");
+      }
+    } catch (e) {
+      console.log("Não encontrado na base global.");
+    }
+  }
+
+  function simularReconhecimentoIA() {
+    alert("🔍 Escaneando rótulo com inteligência artificial...");
+    setTimeout(() => {
+      document.getElementById('nome').value = "Biscoito Recheado Chocolate 140g";
+      document.getElementById('marca').value = "Negresco";
+      document.getElementById('precoNormal').value = "5.50";
+      document.getElementById('precoMinimo').value = "2.80";
+      alert("✅ Rótulo reconhecido!");
+    }, 700);
+  }
+
+  function calcularPrecificacao(validadeStr, precoNormal, precoMinimo) {
+    const hoje = new Date();
+    const validade = new Date(validadeStr + "T00:00:00");
+    const diffDias = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+    
+    let desconto = 0;
+    let classeUrgencia = "status-ok";
+    let classeItem = "item-ok";
+    let mensagemStatus = "Validade Normal";
+
+    if (diffDias <= 0) {
+      desconto = 1.0;
+      classeUrgencia = "status-urgente";
+      classeItem = "item-urgente";
+      mensagemStatus = "VENCIDO";
+    } else if (diffDias <= 3) {
+      desconto = 0.60;
+      classeUrgencia = "status-urgente";
+      classeItem = "item-urgente";
+      mensagemStatus = "Queima Urgente (<= 3d)";
+    } else if (diffDias <= 7) {
+      desconto = 0.35;
+      classeUrgencia = "status-atencao";
+      classeItem = "item-atencao";
+      mensagemStatus = "Promoção (<= 7d)";
+    } else if (diffDias <= 15) {
+      desconto = 0.15;
+      classeUrgencia = "status-atencao";
+      classeItem = "item-atencao";
+      mensagemStatus = "Atenção (<= 15d)";
+    }
+
+    let precoSugerido = precoNormal * (1 - desconto);
+    if (precoSugerido < precoMinimo && diffDias > 0) precoSugerido = precoMinimo;
+
+    return {
+      dias: diffDias,
+      precoSugerido: precoSugerido.toFixed(2),
+      percentualDesconto: Math.round(desconto * 100),
+      classeUrgencia,
+      classeItem,
+      mensagemStatus
+    };
+  }
+
+  function salvarProduto(e) {
+    e.preventDefault();
+    const produto = {
+      id: Date.now(),
+      codigo: document.getElementById('codigoBarra').value,
+      nome: document.getElementById('nome').value,
+      categoria: document.getElementById('categoria').value,
+      marca: document.getElementById('marca').value,
+      validade: document.getElementById('dataValidade').value,
+      precoNormal: parseFloat(document.getElementById('precoNormal').value),
+      precoMinimo: parseFloat(document.getElementById('precoMinimo').value),
+    };
+
+    produtosBD.push(produto);
+    localStorage.setItem('validadesmart_db', JSON.stringify(produtosBD));
+    document.getElementById('formProduto').reset();
+    renderizarProdutos();
+  }
+
+  function renderizarProdutos() {
+    const container = document.getElementById('listaProdutos');
+    container.innerHTML = "";
+
+    produtosBD.sort((a, b) => new Date(a.validade) - new Date(b.validade));
+
+    if (produtosBD.length === 0) {
+      container.innerHTML = `<p style="text-align: center; color: var(--text-muted);">Nenhum produto cadastrado no momento.</p>`;
+      return;
+    }
+
+    produtosBD.forEach(p => {
+      const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
+
+      const card = document.createElement('div');
+      card.className = `card item-produto ${calc.classeItem}`;
+      
+      let botoesAdminHTML = "";
+      if (!modoPublico) {
+        botoesAdminHTML = `
+          <div style="display: flex; gap: 8px; margin-top: 10px;" class="no-print">
+            <button class="print-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.8rem;" onclick="imprimirEtiqueta('${p.nome}', '${calc.precoSugerido}', '${calc.percentualDesconto}', '${p.validade}')">🖨️ Imprimir Etiqueta</button>
+            <button class="secondary" style="flex: 1; padding: 8px; margin: 0; font-size: 0.8rem;" onclick="excluirProduto(${p.id})">Remover</button>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="badge ${calc.classeUrgencia}">${calc.mensagemStatus}</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Validade: ${p.validade} (${calc.dias} dias)</span>
+        </div>
+        <h3 style="margin: 8px 0 4px 0; font-size: 1.1rem;">${p.nome}</h3>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">${p.marca} • ${p.categoria}</p>
+        
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-size: 0.8rem; text-decoration: line-through; color: var(--text-muted);">De: R$ ${p.precoNormal.toFixed(2)}</span>
+            <div class="preco-destaque">Por: R$ ${calc.precoSugerido} <span style="font-size:0.75rem;">(-${calc.percentualDesconto}%)</span></div>
+          </div>
+        </div>
+        ${botoesAdminHTML}
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function imprimirEtiqueta(nome, preco, desconto, validade) {
+    const w = window.open('', '_blank');
+    w.document.write(`
+      <html>
+        <head><title>Etiqueta Promocional</title></head>
+        <body style="font-family: Arial; text-align: center; padding: 20px;">
+          <div style="border: 2px dashed #000; padding: 20px; display: inline-block; border-radius: 10px; width: 280px;">
+            <h3>${nome}</h3>
+            <div style="background: #ffeb3b; padding: 4px; font-weight: bold; font-size: 0.85rem;">LIQ. VALIDADE (-${desconto}%)</div>
+            <div style="font-size: 2rem; font-weight: bold; color: #16a34a; margin: 10px 0;">R$ ${preco}</div>
+            <p style="margin: 0; font-size: 0.9rem;">Validade: ${validade}</p>
+          </div>
+          <script>window.onload = function() { window.print(); window.close(); }<\/script>
+        </body>
+      </html>
+    `);
+    w.document.close();
+  }
+
+  function excluirProduto(id) {
+    produtosBD = produtosBD.filter(p => p.id !== id);
+    localStorage.setItem('validadesmart_db', JSON.stringify(produtosBD));
+    renderizarProdutos();
+  }
+</script>
+
+</body>
+</html>
