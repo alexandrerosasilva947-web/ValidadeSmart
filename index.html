@@ -6,6 +6,39 @@
   <title>ValidadeSmart - Hadar33</title>
   <!-- Biblioteca para leitura de código de barras via câmera -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  
+  <!-- Firebase App (SDK Base) e Firestore (Banco de Dados) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Configuração do Firebase com os dados do seu projeto
+    const firebaseConfig = {
+      apiKey: "AIzaSyBIm8QZtuUulWcWj4OdL_vqWEF0aQFrRvY",
+      authDomain: "validadesmart.firebaseapp.com",
+      projectId: "validadesmart",
+      storageBucket: "validadesmart.firebasestorage.app"
+    };
+
+    // Inicializar o Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Disponibilizar variáveis globalmente para as funções do app
+    window.db = db;
+    window.collection = collection;
+    window.addDoc = addDoc;
+    window.getDocs = getDocs;
+    window.deleteDoc = deleteDoc;
+    window.doc = doc;
+    window.updateDoc = updateDoc;
+
+    // Carregar produtos assim que o app iniciar
+    window.addEventListener('DOMContentLoaded', () => {
+      carregarProdutosNuvem();
+    });
+  </script>
+
   <style>
     :root {
       --primary: #2563eb;
@@ -20,7 +53,7 @@
     h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 0.5rem; }
     p { color: #64748b; font-size: 0.95rem; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
     .input-group { display: flex; flex-direction: column; }
     label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #475569; }
     input, select { padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
@@ -28,6 +61,7 @@
     button:hover { background: #1d4ed8; }
     .btn-secondary { background: #059669; }
     .btn-secondary:hover { background: #047857; }
+    .btn-mini { padding: 0.2rem 0.5rem; font-size: 0.75rem; margin: 0.1rem; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; font-size: 0.9rem; }
     th, td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
     th { background: #f1f5f9; font-weight: 600; }
@@ -41,7 +75,7 @@
 <body>
   <header>
     <h1>ValidadeSmart - Hadar33</h1>
-    <p>Gestão de estoque, precificação dinâmica e controle por validade</p>
+    <p>Gestão de estoque, precificação dinâmica e controle por validade (Nuvem Firebase)</p>
   </header>
 
   <!-- Leitor de Câmera -->
@@ -52,7 +86,7 @@
 
   <div class="card">
     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Cadastrar Novo Produto</h2>
-    <form id="formProduto" onsubmit="salvarProduto(event)">
+    <form id="formProduto" onsubmit="salvarProdutoNuvem(event)">
       <div class="form-grid">
         <div class="input-group">
           <label for="codigoBarra">Código de Barras</label>
@@ -83,12 +117,20 @@
           <input type="date" id="dataValidade" required>
         </div>
         <div class="input-group">
-          <label for="qtdLoja">Qtd. Exposta na Loja</label>
+          <label for="qtdLoja">Qtd. Exposta na Loja (Un.)</label>
           <input type="number" id="qtdLoja" min="0" value="0" required>
         </div>
         <div class="input-group">
-          <label for="qtdEstoque">Qtd. em Estoque/Caixa</label>
-          <input type="number" id="qtdEstoque" min="0" value="0" required>
+          <label for="unidadesPorCaixa">Unidades por Caixa</label>
+          <input type="number" id="unidadesPorCaixa" min="1" value="1" placeholder="Ex: 12" required>
+        </div>
+        <div class="input-group">
+          <label for="qtdCaixasEstoque">Caixas no Estoque</label>
+          <input type="number" id="qtdCaixasEstoque" min="0" value="0" required>
+        </div>
+        <div class="input-group">
+          <label for="qtdUnidadesSoltasEstoque">Unidades Soltas no Estoque</label>
+          <input type="number" id="qtdUnidadesSoltasEstoque" min="0" value="0" required>
         </div>
         <div class="input-group">
           <label for="precoNormal">Preço Normal (R$)</label>
@@ -99,13 +141,13 @@
           <input type="number" step="0.01" id="precoMinimo" required>
         </div>
       </div>
-      <button type="submit">Salvar Produto</button>
+      <button type="submit">Salvar na Nuvem</button>
     </form>
   </div>
 
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="font-size: 1.2rem;">Estoque Monitorado</h2>
+      <h2 style="font-size: 1.2rem;">Estoque Monitorado (Nuvem)</h2>
       <button type="button" class="btn-secondary" onclick="compartilharRelatorioUrgente()">📤 Compartilhar Alertas (WhatsApp)</button>
     </div>
     <div style="overflow-x: auto;">
@@ -114,71 +156,125 @@
           <tr>
             <th>Produto</th>
             <th>Validade</th>
-            <th>Qtd (Loja / Caixa)</th>
+            <th>Qtd Loja</th>
+            <th>Qtd Estoque (Cx + Un)</th>
             <th>Preço Sugerido</th>
             <th>Status</th>
-            <th>Ações</th>
+            <th>Ações / Movimentação</th>
           </tr>
         </thead>
         <tbody id="tabelaProdutos">
+          <tr><td colspan="7" style="text-align: center;">Carregando dados da nuvem...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
   <script>
-    const STORAGE_KEY = 'validadesmart_db';
-    let produtosBD = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    let produtosBD = [];
     let html5QrCode;
 
-    // Função de sincronização com Nuvem (Preparada para API externa)
-    async function sincronizarComNuvem(dados) {
+    // Função para carregar produtos do Firestore
+    async function carregarProdutosNuvem() {
       try {
-        // Exemplo de integração futura com seu servidor em nuvem (Firebase, Supabase, etc):
-        // await fetch('https://sua-api-nuvem.com/produtos', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(dados)
-        // });
-        console.log("Dados sincronizados com a nuvem com sucesso.");
+        const querySnapshot = await window.getDocs(window.collection(window.db, "produtos"));
+        produtosBD = [];
+        querySnapshot.forEach((docSnap) => {
+          produtosBD.push({ idDoc: docSnap.id, ...docSnap.data() });
+        });
+        renderizarProdutos();
       } catch (error) {
-        console.error("Erro ao sincronizar com a nuvem:", error);
+        console.error("Erro ao carregar do Firebase:", error);
       }
     }
 
-    function persistirDados() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(produtosBD));
-        sincronizarComNuvem(produtosBD);
-      } catch (error) {
-        console.error("Erro ao salvar dados:", error);
-      }
-    }
-
-    function salvarProduto(e) {
+    // Função para salvar produto no Firestore
+    async function salvarProdutoNuvem(e) {
       e.preventDefault();
+      const unPorCx = parseInt(document.getElementById('unidadesPorCaixa').value) || 1;
+      const caixas = parseInt(document.getElementById('qtdCaixasEstoque').value) || 0;
+      const soltas = parseInt(document.getElementById('qtdUnidadesSoltasEstoque').value) || 0;
+      const totalEstoqueUnidades = (caixas * unPorCx) + soltas;
+
       const produto = {
-        id: Date.now(),
         codigo: document.getElementById('codigoBarra').value.trim(),
         nome: document.getElementById('nome').value.trim(),
         categoria: document.getElementById('categoria').value,
         marca: document.getElementById('marca').value.trim(),
         validade: document.getElementById('dataValidade').value,
         qtdLoja: parseInt(document.getElementById('qtdLoja').value) || 0,
-        qtdEstoque: parseInt(document.getElementById('qtdEstoque').value) || 0,
+        unidadesPorCaixa: unPorCx,
+        qtdCaixasEstoque: caixas,
+        qtdUnidadesSoltasEstoque: soltas,
+        totalEstoque: totalEstoqueUnidades,
         precoNormal: parseFloat(document.getElementById('precoNormal').value),
         precoMinimo: parseFloat(document.getElementById('precoMinimo').value),
+        criadoEm: Date.now()
       };
-      produtosBD.push(produto);
-      persistirDados();
-      document.getElementById('formProduto').reset();
-      renderizarProdutos();
+
+      try {
+        await window.addDoc(window.collection(window.db, "produtos"), produto);
+        document.getElementById('formProduto').reset();
+        carregarProdutosNuvem();
+      } catch (error) {
+        console.error("Erro ao salvar no Firebase:", error);
+        alert("Erro ao salvar produto na nuvem.");
+      }
     }
 
-    function excluirProduto(id) {
-      produtosBD = produtosBD.filter(p => p.id !== id);
-      persistirDados();
-      renderizarProdutos();
+    // Alterar estoque diretamente no Firebase
+    async function alterarEstoque(idDoc, tipoMovimento) {
+      const p = produtosBD.find(item => item.idDoc === idDoc);
+      if (!p) return;
+
+      if (tipoMovimento === 'repor') {
+        let totalDisponivel = (p.qtdCaixasEstoque * p.unidadesPorCaixa) + p.qtdUnidadesSoltasEstoque;
+        if (totalDisponivel <= 0) {
+          alert("Não há unidades suficientes no estoque/caixa para reposição!");
+          return;
+        }
+        if (p.qtdUnidadesSoltasEstoque > 0) {
+          p.qtdUnidadesSoltasEstoque--;
+        } else if (p.qtdCaixasEstoque > 0) {
+          p.qtdCaixasEstoque--;
+          p.qtdUnidadesSoltasEstoque += (p.unidadesPorCaixa - 1);
+        }
+        p.qtdLoja++;
+      } else if (tipoMovimento === 'retirarLoja') {
+        if (p.qtdLoja <= 0) {
+          alert("A quantidade na loja já está zerada!");
+          return;
+        }
+        p.qtdLoja--;
+        p.qtdUnidadesSoltasEstoque++;
+      }
+
+      p.totalEstoque = (p.qtdCaixasEstoque * p.unidadesPorCaixa) + p.qtdUnidadesSoltasEstoque;
+
+      try {
+        const docRef = window.doc(window.db, "produtos", idDoc);
+        await window.updateDoc(docRef, {
+          qtdLoja: p.qtdLoja,
+          qtdCaixasEstoque: p.qtdCaixasEstoque,
+          qtdUnidadesSoltasEstoque: p.qtdUnidadesSoltasEstoque,
+          totalEstoque: p.totalEstoque
+        });
+        carregarProdutosNuvem();
+      } catch (error) {
+        console.error("Erro ao atualizar estoque:", error);
+      }
+    }
+
+    // Excluir produto do Firebase
+    async function excluirProduto(idDoc) {
+      if (confirm("Deseja realmente excluir este produto da nuvem?")) {
+        try {
+          await window.deleteDoc(window.doc(window.db, "produtos", idDoc));
+          carregarProdutosNuvem();
+        } catch (error) {
+          console.error("Erro ao excluir do Firebase:", error);
+        }
+      }
     }
 
     async function buscarDadosBarcode(codigo) {
@@ -196,7 +292,6 @@
       }
     }
 
-    // Leitor de Câmera com Html5Qrcode
     function iniciarLeitorCamera() {
       const readerDiv = document.getElementById('reader');
       readerDiv.style.display = 'block';
@@ -214,9 +309,7 @@
           html5QrCode.stop();
           readerDiv.style.display = 'none';
         },
-        (errorMessage) => {
-          // Erro de varredura quadro a quadro (ignorar)
-        }
+        (errorMessage) => {}
       ).catch((err) => {
         alert("Erro ao acessar a câmera. Verifique as permissões do navegador.");
         readerDiv.style.display = 'none';
@@ -248,16 +341,27 @@
     function renderizarProdutos() {
       const tbody = document.getElementById('tabelaProdutos');
       tbody.innerHTML = '';
+      
+      if (produtosBD.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">Nenhum produto cadastrado na nuvem.</td></tr>`;
+        return;
+      }
+
       produtosBD.forEach(p => {
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${p.nome}</strong><br><small style="color:#64748b">${p.marca || 'Sem marca'} - ${p.categoria}</small></td>
           <td>${p.validade}</td>
-          <td>Loja: <strong>${p.qtdLoja}</strong> | Caixa: <strong>${p.qtdEstoque}</strong></td>
+          <td><strong>${p.qtdLoja}</strong> un.</td>
+          <td>${p.qtdCaixasEstoque} cx(s) + ${p.qtdUnidadesSoltasEstoque} un.<br><small style="color:#64748b">(Total: ${p.totalEstoque} un.)</small></td>
           <td><strong>R$ ${calc.precoSugerido}</strong></td>
           <td><span class="badge ${calc.classeUrgencia}">${calc.mensagemStatus}</span></td>
-          <td><button style="background:#ef4444; padding: 0.3rem 0.6rem; font-size:0.8rem;" onclick="excluirProduto(${p.id})">Excluir</button></td>
+          <td>
+            <button class="btn-secondary btn-mini" onclick="alterarEstoque('${p.idDoc}', 'repor')" title="Mover 1 unidade do estoque para a loja">Repor Loja (+)</button>
+            <button style="background:#d97706;" class="btn-mini" onclick="alterarEstoque('${p.idDoc}', 'retirarLoja')" title="Devolver 1 unidade da loja para o estoque">Retirar Loja (-)</button><br>
+            <button style="background:#ef4444;" class="btn-mini" onclick="excluirProduto('${p.idDoc}')">Excluir</button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -268,14 +372,12 @@
       produtosBD.forEach(p => {
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
         if (calc.classeUrgencia !== 'status-ok') {
-          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Qtd Loja: ${p.qtdLoja} | Qtd Caixa: ${p.qtdEstoque}\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
+          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
         }
       });
       const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
-
-    renderizarProdutos();
   </script>
 </body>
 </html>
