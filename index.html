@@ -1,6 +1,4 @@
-
-        
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -377,8 +375,16 @@
           mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
         }
       });
-      const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
-      window.open(url, '_blank');
+
+      // Correção do erro de protocolo (utilizando wa.me com abertura controlada via link temporário)
+      const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
