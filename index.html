@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ValidadeSmart</title>
-  <!-- Biblioteca para leitura de código de barras via câmera -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <!-- Biblioteca para gráficos (Chart.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
@@ -88,7 +86,6 @@
     .status-atencao { background: #fef9c3; color: #854d0e; }
     .status-urgente { background: #fee2e2; color: #991b1b; }
     
-    #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; }
     .img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
     .img-card { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
     
@@ -110,19 +107,13 @@
     ⚠️ Atenção! Existem produtos com validade próxima (≤ 15 dias) ou vencidos no estoque! Verifique os itens abaixo.
   </div>
 
-  <!-- Leitor de Câmera -->
-  <div class="card" style="text-align: center;">
-    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Ler Código de Barras</button>
-    <div id="reader"></div>
-  </div>
-
   <div class="card">
     <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">Cadastrar Novo Produto</h2>
     <form id="formProduto" onsubmit="salvarProdutoNuvem(event)">
       <div class="form-grid">
         <div class="input-group">
           <label for="codigoBarra">Código de Barras</label>
-          <input type="text" id="codigoBarra" placeholder="Digite ou escaneie" onblur="buscarDadosBarcode(this.value)">
+          <input type="text" id="codigoBarra" placeholder="Digite o código" onblur="buscarDadosBarcode(this.value)">
         </div>
         <div class="input-group">
           <label for="nome">Nome do Produto</label>
@@ -145,7 +136,7 @@
           <input type="text" id="marca">
         </div>
         <div class="input-group">
-          <label for="fotoProduto">Foto do Produto</label>
+          <label for="fotoProduto">📷 Foto / Câmera do Produto</label>
           <input type="file" id="fotoProduto" accept="image/*" capture="environment">
         </div>
         <div class="input-group">
@@ -221,7 +212,6 @@
 
   <script>
     let produtosBD = [];
-    let html5QrCode = null;
     let meuGrafico = null;
     let modoVisualizacao = 'lista';
 
@@ -379,42 +369,6 @@
         }
       } catch (e) {
         console.log("Produto não encontrado na base global externa.");
-      }
-    }
-
-    // Função de Câmera com Requisição Explícita de Permissão do Sistema/Navegador
-    async function iniciarLeitorCamera() {
-      const readerDiv = document.getElementById('reader');
-      readerDiv.style.display = 'block';
-      
-      try {
-        // Solicita explicitamente a permissão de vídeo ao navegador/WebView antes de iniciar
-        await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-
-        if (!html5QrCode) {
-          html5QrCode = new Html5Qrcode("reader");
-        }
-
-        if (html5QrCode.isScanning) {
-          await html5QrCode.stop();
-        }
-
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 100 } },
-          (decodedText) => {
-            document.getElementById('codigoBarra').value = decodedText;
-            buscarDadosBarcode(decodedText);
-            html5QrCode.stop().then(() => {
-              readerDiv.style.display = 'none';
-            }).catch(() => {});
-          },
-          (errorMessage) => {}
-        );
-      } catch (err) {
-        console.error("Erro de permissão ou acesso à câmera:", err);
-        alert("⚠️ Permissão de câmera negada ou indisponível.\n\nVerifique:\n1. Se o seu aplicativo no Kodular tem permissão de Câmera ativada.\n2. Se você permitiu o acesso à câmera quando o celular solicitou.");
-        readerDiv.style.display = 'none';
       }
     }
 
