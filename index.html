@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ValidadeSmart</title>
-  <!-- Biblioteca para leitura de código de barras via câmera em tempo real -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <!-- Biblioteca para gráficos (Chart.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
@@ -14,7 +12,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Configuração do Firebase com os dados do seu projeto
     const firebaseConfig = {
       apiKey: "AIzaSyBIm8QZtuUulWcWj4OdL_vqWEF0aQFrRvY",
       authDomain: "validadesmart.firebaseapp.com",
@@ -22,11 +19,9 @@
       storageBucket: "validadesmart.firebasestorage.app"
     };
 
-    // Inicializar o Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Disponibilizar variáveis globalmente para as funções do app
     window.db = db;
     window.collection = collection;
     window.addDoc = addDoc;
@@ -35,7 +30,6 @@
     window.doc = doc;
     window.updateDoc = updateDoc;
 
-    // Carregar produtos assim que o app iniciar
     window.addEventListener('DOMContentLoaded', () => {
       carregarProdutosNuvem();
     });
@@ -43,8 +37,8 @@
 
   <style>
     :root {
-      --primary: #1e3a8a;       /* Azul Escuro Profundo */
-      --secondary: #f97316;     /* Laranja Vibrante */
+      --primary: #1e3a8a;
+      --secondary: #f97316;
       --secondary-hover: #ea580c;
       --bg: #f8fafc;
       --card: #ffffff;
@@ -73,12 +67,10 @@
     
     .btn-mini { padding: 0.25rem 0.6rem; font-size: 0.75rem; margin: 0.1rem; border-radius: 4px; }
     
-    /* Estilos de Tabela (Lista) */
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; font-size: 0.9rem; }
     th, td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
     th { background: #eff6ff; color: var(--primary); font-weight: 700; }
     
-    /* Estilos de Grades (Cards) */
     .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
     .produto-card-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-left: 4px solid var(--secondary); }
 
@@ -86,8 +78,6 @@
     .status-ok { background: #dcfce7; color: #166534; }
     .status-atencao { background: #fef9c3; color: #854d0e; }
     .status-urgente { background: #fee2e2; color: #991b1b; }
-    
-    #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; background: #000; }
     
     #modalRelatorio { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 1rem; }
     .modal-content { background: white; padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem; border-top: 5px solid var(--secondary); }
@@ -102,79 +92,76 @@
     <p>Gestão inteligente de estoque, precificação dinâmica e controle de validades na nuvem</p>
   </header>
 
-  <!-- Banner de Alerta Automático para Produtos Próximos do Vencimento -->
   <div id="bannerAlerta" class="alerta-banner">
     ⚠️ Atenção! Existem produtos com validade próxima (≤ 15 dias) ou vencidos no estoque! Verifique os itens abaixo.
   </div>
 
-  <!-- Leitor de Câmera em Tempo Real para Código de Barras -->
-  <div class="card" style="text-align: center;">
-    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Escanear Código de Barras</button>
-    <div id="reader"></div>
-  </div>
-
   <div class="card">
     <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">Cadastrar Novo Produto</h2>
-    <form id="formProduto" onsubmit="salvarProdutoNuvem(event)">
-      <div class="form-grid">
-        <div class="input-group">
-          <label for="codigoBarra">Código de Barras</label>
-          <input type="text" id="codigoBarra" placeholder="Escaneie ou digite" onblur="buscarDadosBarcode(this.value)" required>
-        </div>
-        <div class="input-group">
-          <label for="nome">Nome do Produto</label>
-          <input type="text" id="nome" required>
-        </div>
-        <div class="input-group">
-          <label for="categoria">Categoria</label>
-          <select id="categoria">
-            <option value="Geral">Geral</option>
-            <option value="Laticínios">Laticínios</option>
-            <option value="Açougue">Açougue</option>
-            <option value="Hortifruti">Hortifruti</option>
-            <option value="Bebidas">Bebidas</option>
-            <option value="Cereais">Cereais</option>
-            <option value="Mercearia Seca">Mercearia Seca</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="marca">Marca</label>
-          <input type="text" id="marca">
-        </div>
-        <div class="input-group">
-          <label for="dataValidade">Data de Validade</label>
-          <input type="date" id="dataValidade" required>
-        </div>
-        <div class="input-group">
-          <label for="qtdLoja">Qtd. Exposta na Loja (Un.)</label>
-          <input type="number" id="qtdLoja" min="0" value="0" required>
-        </div>
-        <div class="input-group">
-          <label for="unidadesPorCaixa">Unidades por Caixa</label>
-          <input type="number" id="unidadesPorCaixa" min="1" value="1" placeholder="Ex: 12" required>
-        </div>
-        <div class="input-group">
-          <label for="qtdCaixasEstoque">Caixas no Estoque</label>
-          <input type="number" id="qtdCaixasEstoque" min="0" value="0" required>
-        </div>
-        <div class="input-group">
-          <label for="qtdUnidadesSoltasEstoque">Unidades Soltas no Estoque</label>
-          <input type="number" id="qtdUnidadesSoltasEstoque" min="0" value="0" required>
-        </div>
-        <div class="input-group">
-          <label for="precoNormal">Preço Normal (R$)</label>
-          <input type="number" step="0.01" id="precoNormal" required>
-        </div>
-        <div class="input-group">
-          <label for="precoMinimo">Preço Mínimo (R$)</label>
-          <input type="number" step="0.01" id="precoMinimo" required>
+    <div class="form-grid">
+      <div class="input-group">
+        <label for="codigoBarra">Código de Barras</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="codigoBarra" placeholder="Digite ou escaneie" onblur="buscarDadosBarcode(this.value)" style="flex: 1;">
+          <label for="cameraScanner" class="btn-laranja" style="padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;" title="Usar Câmera">
+            📷
+          </label>
+          <input type="file" id="cameraScanner" accept="image/*" capture="environment" style="display: none;" onchange="capturarCodigoCamera(this)">
         </div>
       </div>
-      <button type="submit" class="btn-laranja" style="width: 100%; padding: 0.8rem; font-size: 1rem;">Salvar Produto na Nuvem</button>
-    </form>
+      <div class="input-group">
+        <label for="nome">Nome do Produto</label>
+        <input type="text" id="nome">
+      </div>
+      <div class="input-group">
+        <label for="categoria">Categoria</label>
+        <select id="categoria">
+          <option value="Geral">Geral</option>
+          <option value="Laticínios">Laticínios</option>
+          <option value="Açougue">Açougue</option>
+          <option value="Hortifruti">Hortifruti</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Cereais">Cereais</option>
+          <option value="Mercearia Seca">Mercearia Seca</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="marca">Marca</label>
+        <input type="text" id="marca">
+      </div>
+      <div class="input-group">
+        <label for="dataValidade">Data de Validade</label>
+        <input type="date" id="dataValidade">
+      </div>
+      <div class="input-group">
+        <label for="qtdLoja">Qtd. Exposta na Loja (Un.)</label>
+        <input type="number" id="qtdLoja" min="0" value="0">
+      </div>
+      <div class="input-group">
+        <label for="unidadesPorCaixa">Unidades por Caixa</label>
+        <input type="number" id="unidadesPorCaixa" min="1" value="1" placeholder="Ex: 12">
+      </div>
+      <div class="input-group">
+        <label for="qtdCaixasEstoque">Caixas no Estoque</label>
+        <input type="number" id="qtdCaixasEstoque" min="0" value="0">
+      </div>
+      <div class="input-group">
+        <label for="qtdUnidadesSoltasEstoque">Unidades Soltas no Estoque</label>
+        <input type="number" id="qtdUnidadesSoltasEstoque" min="0" value="0">
+      </div>
+      <div class="input-group">
+        <label for="precoNormal">Preço Normal (R$)</label>
+        <input type="number" step="0.01" id="precoNormal">
+      </div>
+      <div class="input-group">
+        <label for="precoMinimo">Preço Mínimo (R$)</label>
+        <input type="number" step="0.01" id="precoMinimo">
+      </div>
+    </div>
+    <!-- Botão de salvamento direto ligado à função JavaScript -->
+    <button type="button" class="btn-laranja" style="width: 100%; padding: 0.8rem; font-size: 1rem;" onclick="salvarProdutoNuvem()">Salvar Produto na Nuvem</button>
   </div>
 
-  <!-- Painel de Gráfico de Promoções Mês a Mês -->
   <div class="card">
     <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">📊 Histórico Mensal de Produtos em Promoção / Atenção</h2>
     <div style="position: relative; height: 250px; width: 100%;">
@@ -186,20 +173,15 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
       <h2 style="font-size: 1.2rem; color: var(--primary);">Estoque Monitorado</h2>
       <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-        <!-- Botões de Alternância de Visualização -->
         <button type="button" id="btnModoLista" style="background: var(--primary); padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="mudarVisualizacao('lista')">📋 Lista</button>
         <button type="button" id="btnModoGrade" style="background: #94a3b8; padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="mudarVisualizacao('grade')">🔲 Grades</button>
         <button type="button" class="btn-laranja" style="padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="gerarRelatorioModal()">📤 WhatsApp</button>
       </div>
     </div>
 
-    <!-- Área de Exibição Dinâmica (Lista ou Grades) -->
-    <div id="containerProdutos">
-      <!-- Conteúdo injetado via JavaScript -->
-    </div>
+    <div id="containerProdutos"></div>
   </div>
 
-  <!-- Modal para exibir o texto pronto para cópia segura -->
   <div id="modalRelatorio">
     <div class="modal-content">
       <h3 style="color: var(--primary);">Relatório de Validades</h3>
@@ -214,7 +196,6 @@
 
   <script>
     let produtosBD = [];
-    let html5QrCode = null;
     let meuGrafico = null;
     let modoVisualizacao = 'lista';
 
@@ -254,8 +235,25 @@
       banner.style.display = temAlerta ? 'block' : 'none';
     }
 
-    async function salvarProdutoNuvem(e) {
-      e.preventDefault();
+    // Ação da Câmera Nativa integrada
+    function capturarCodigoCamera(input) {
+      if (input.files && input.files[0]) {
+        alert("📷 Câmera acessada! Se o código de barras não preencher automaticamente o número, digite-os para buscar o produto.");
+      }
+    }
+
+    // Função de Salvamento Direta (Sem travar por formulário)
+    async function salvarProdutoNuvem() {
+      const nome = document.getElementById('nome').value.trim();
+      const validade = document.getElementById('dataValidade').value;
+      const precoNormal = document.getElementById('precoNormal').value;
+      const precoMinimo = document.getElementById('precoMinimo').value;
+
+      if (!nome || !validade || !precoNormal || !precoMinimo) {
+        alert("⚠️ Por favor, preencha os campos obrigatórios: Nome, Validade, Preço Normal e Preço Mínimo.");
+        return;
+      }
+
       const unPorCx = parseInt(document.getElementById('unidadesPorCaixa').value) || 1;
       const caixas = parseInt(document.getElementById('qtdCaixasEstoque').value) || 0;
       const soltas = parseInt(document.getElementById('qtdUnidadesSoltasEstoque').value) || 0;
@@ -263,23 +261,35 @@
 
       const produto = {
         codigo: document.getElementById('codigoBarra').value.trim(),
-        nome: document.getElementById('nome').value.trim(),
+        nome: nome,
         categoria: document.getElementById('categoria').value,
         marca: document.getElementById('marca').value.trim(),
-        validade: document.getElementById('dataValidade').value,
+        validade: validade,
         qtdLoja: parseInt(document.getElementById('qtdLoja').value) || 0,
         unidadesPorCaixa: unPorCx,
         qtdCaixasEstoque: caixas,
         qtdUnidadesSoltasEstoque: soltas,
         totalEstoque: totalEstoqueUnidades,
-        precoNormal: parseFloat(document.getElementById('precoNormal').value),
-        precoMinimo: parseFloat(document.getElementById('precoMinimo').value),
+        precoNormal: parseFloat(precoNormal),
+        precoMinimo: parseFloat(precoMinimo),
         criadoEm: Date.now()
       };
 
       try {
         await window.addDoc(window.collection(window.db, "produtos"), produto);
-        document.getElementById('formProduto').reset();
+        
+        // Limpar campos manualmente
+        document.getElementById('codigoBarra').value = '';
+        document.getElementById('nome').value = '';
+        document.getElementById('marca').value = '';
+        document.getElementById('dataValidade').value = '';
+        document.getElementById('qtdLoja').value = '0';
+        document.getElementById('unidadesPorCaixa').value = '1';
+        document.getElementById('qtdCaixasEstoque').value = '0';
+        document.getElementById('qtdUnidadesSoltasEstoque').value = '0';
+        document.getElementById('precoNormal').value = '';
+        document.getElementById('precoMinimo').value = '';
+
         carregarProdutosNuvem();
         alert("✅ Produto salvo com sucesso na nuvem!");
       } catch (error) {
@@ -342,7 +352,6 @@
       }
     }
 
-    // Função que busca automaticamente o nome e a marca pelo código de barras
     async function buscarDadosBarcode(codigo) {
       if (!codigo) return;
       try {
@@ -355,50 +364,6 @@
         }
       } catch (e) {
         console.log("Produto não encontrado na base global externa.");
-      }
-    }
-
-    // Leitor de Câmera Real em Tempo Real com Permissão Ativa
-    async function iniciarLeitorCamera() {
-      const readerDiv = document.getElementById('reader');
-      readerDiv.style.display = 'block';
-      
-      try {
-        await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-
-        if (!html5QrCode) {
-          html5QrCode = new Html5Qrcode("reader");
-        }
-
-        if (html5QrCode.isScanning) {
-          await html5QrCode.stop();
-        }
-
-        html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 100 } },
-          (decodedText) => {
-            // 1. Insere o código de barras capturado automaticamente no campo
-            document.getElementById('codigoBarra').value = decodedText;
-            
-            // 2. Dispara a busca automática das informações do produto
-            buscarDadosBarcode(decodedText);
-            
-            // 3. Fecha a câmera e esconde o leitor
-            html5QrCode.stop().then(() => {
-              readerDiv.style.display = 'none';
-            }).catch(err => console.log(err));
-          },
-          (errorMessage) => {}
-        ).catch((err) => {
-          alert("Erro ao iniciar o leitor de câmera. Verifique as permissões de vídeo.");
-          readerDiv.style.display = 'none';
-        });
-
-      } catch (err) {
-        console.error("Erro de permissão ou acesso à câmera:", err);
-        alert("⚠️ Permissão de câmera negada ou indisponível.\n\nVerifique se o seu celular permitiu o uso da câmera para o aplicativo.");
-        readerDiv.style.display = 'none';
       }
     }
 
