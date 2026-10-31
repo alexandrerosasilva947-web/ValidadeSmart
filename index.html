@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ValidadeSmart</title>
+  <!-- Biblioteca para leitura de código de barras via câmera -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <!-- Biblioteca para gráficos (Chart.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
@@ -86,6 +88,7 @@
     .status-atencao { background: #fef9c3; color: #854d0e; }
     .status-urgente { background: #fee2e2; color: #991b1b; }
     
+    #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; }
     .img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
     .img-card { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
     
@@ -107,13 +110,19 @@
     ⚠️ Atenção! Existem produtos com validade próxima (≤ 15 dias) ou vencidos no estoque! Verifique os itens abaixo.
   </div>
 
+  <!-- Leitor de Câmera para Código de Barras -->
+  <div class="card" style="text-align: center;">
+    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Leitor de Código de Barras</button>
+    <div id="reader"></div>
+  </div>
+
   <div class="card">
     <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">Cadastrar Novo Produto</h2>
     <form id="formProduto" onsubmit="salvarProdutoNuvem(event)">
       <div class="form-grid">
         <div class="input-group">
           <label for="codigoBarra">Código de Barras</label>
-          <input type="text" id="codigoBarra" placeholder="Digite o código" onblur="buscarDadosBarcode(this.value)">
+          <input type="text" id="codigoBarra" placeholder="Digite ou escaneie" onblur="buscarDadosBarcode(this.value)">
         </div>
         <div class="input-group">
           <label for="nome">Nome do Produto</label>
@@ -136,7 +145,7 @@
           <input type="text" id="marca">
         </div>
         <div class="input-group">
-          <label for="fotoProduto">📷 Foto / Câmera do Produto</label>
+          <label for="fotoProduto">Foto do Produto (Opcional)</label>
           <input type="file" id="fotoProduto" accept="image/*" capture="environment">
         </div>
         <div class="input-group">
@@ -212,6 +221,7 @@
 
   <script>
     let produtosBD = [];
+    let html5QrCode = null;
     let meuGrafico = null;
     let modoVisualizacao = 'lista';
 
@@ -298,6 +308,7 @@
         await window.addDoc(window.collection(window.db, "produtos"), produto);
         document.getElementById('formProduto').reset();
         carregarProdutosNuvem();
+        alert("✅ Produto salvo com sucesso na nuvem!");
       } catch (error) {
         console.error("Erro ao salvar no Firebase:", error);
         alert("Erro ao salvar produto na nuvem.");
@@ -346,6 +357,7 @@
       }
     }
 
+    // Função de Exclusão Corrigida (Usa o idDoc corretamente)
     async function excluirProduto(idDoc) {
       if (confirm("Deseja realmente excluir este produto da nuvem?")) {
         try {
@@ -353,6 +365,7 @@
           carregarProdutosNuvem();
         } catch (error) {
           console.error("Erro ao excluir do Firebase:", error);
+          alert("Erro ao excluir o produto. Tente novamente.");
         }
       }
     }
@@ -370,6 +383,32 @@
       } catch (e) {
         console.log("Produto não encontrado na base global externa.");
       }
+    }
+
+    // Leitor de Câmera Real via Html5Qrcode
+    function iniciarLeitorCamera() {
+      const readerDiv = document.getElementById('reader');
+      readerDiv.style.display = 'block';
+      
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+      }
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 100 } },
+        (decodedText) => {
+          document.getElementById('codigoBarra').value = decodedText;
+          buscarDadosBarcode(decodedText);
+          html5QrCode.stop().then(() => {
+            readerDiv.style.display = 'none';
+          }).catch(err => console.log(err));
+        },
+        (errorMessage) => {}
+      ).catch((err) => {
+        alert("Erro ao acessar a câmera. Verifique se o aplicativo tem permissão de uso de câmera.");
+        readerDiv.style.display = 'none';
+      });
     }
 
     function calcularPrecificacao(validadeStr, precoNormal, precoMinimo) {
