@@ -221,7 +221,7 @@
 
   <script>
     let produtosBD = [];
-    let html5QrCode;
+    let html5QrCode = null;
     let meuGrafico = null;
     let modoVisualizacao = 'lista';
 
@@ -382,28 +382,38 @@
       }
     }
 
-    function iniciarLeitorCamera() {
+    // Função de Câmera Corrigida e Segura para WebView
+    async function iniciarLeitorCamera() {
       const readerDiv = document.getElementById('reader');
       readerDiv.style.display = 'block';
       
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
+        }
 
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 100 } },
-        (decodedText) => {
-          document.getElementById('codigoBarra').value = decodedText;
-          buscarDadosBarcode(decodedText);
-          html5QrCode.stop();
-          readerDiv.style.display = 'none';
-        },
-        (errorMessage) => {}
-      ).catch((err) => {
-        alert("Erro ao acessar a câmera. Verifique as permissões do navegador.");
+        // Verifica se já está rodando para evitar conflito de instâncias
+        if (html5QrCode.isScanning) {
+          await html5QrCode.stop();
+        }
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 100 } },
+          (decodedText) => {
+            document.getElementById('codigoBarra').value = decodedText;
+            buscarDadosBarcode(decodedText);
+            html5QrCode.stop().then(() => {
+              readerDiv.style.display = 'none';
+            }).catch(() => {});
+          },
+          (errorMessage) => {}
+        );
+      } catch (err) {
+        console.error("Erro na câmera:", err);
+        alert("Erro ao acessar a câmera. Verifique se o aplicativo tem permissão de uso de câmera nas configurações do Android.");
         readerDiv.style.display = 'none';
-      });
+      }
     }
 
     function calcularPrecificacao(validadeStr, precoNormal, precoMinimo) {
