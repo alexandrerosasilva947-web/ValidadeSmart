@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ValidadeSmart - Hadar33</title>
+  <title>ValidadeSmart</title>
   <!-- Biblioteca para leitura de código de barras via câmera -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Biblioteca para gráficos (Chart.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Firebase App (SDK Base) e Firestore (Banco de Dados) -->
   <script type="module">
@@ -41,7 +43,9 @@
 
   <style>
     :root {
-      --primary: #2563eb;
+      --primary: #1e3a8a;       /* Azul Escuro Profundo */
+      --secondary: #f97316;     /* Laranja Vibrante */
+      --secondary-hover: #ea580c;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #1e293b;
@@ -49,43 +53,71 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg); color: var(--text); padding: 2rem 1rem; max-width: 1000px; margin: 0 auto; }
-    header { margin-bottom: 2rem; text-align: center; }
-    h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 0.5rem; }
+    header { margin-bottom: 2rem; text-align: center; border-bottom: 3px solid var(--secondary); padding-bottom: 1rem; }
+    h1 { color: var(--primary); font-size: 2rem; margin-bottom: 0.3rem; font-weight: 800; letter-spacing: -0.5px; }
     p { color: #64748b; font-size: 0.95rem; }
+    
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
     .input-group { display: flex; flex-direction: column; }
-    label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #475569; }
-    input, select { padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+    
+    label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--primary); }
+    input, select { padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+    input:focus, select:focus { border-color: var(--secondary); }
+    
     button { background: var(--primary); color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-    button:hover { background: #1d4ed8; }
-    .btn-secondary { background: #059669; }
-    .btn-secondary:hover { background: #047857; }
-    .btn-mini { padding: 0.2rem 0.5rem; font-size: 0.75rem; margin: 0.1rem; }
+    button:hover { background: #172554; }
+    
+    .btn-laranja { background: var(--secondary); color: white; }
+    .btn-laranja:hover { background: var(--secondary-hover); }
+    
+    .btn-mini { padding: 0.25rem 0.6rem; font-size: 0.75rem; margin: 0.1rem; border-radius: 4px; }
+    
+    /* Estilos de Tabela (Lista) */
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; font-size: 0.9rem; }
     th, td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
-    th { background: #f1f5f9; font-weight: 600; }
+    th { background: #eff6ff; color: var(--primary); font-weight: 700; }
+    
+    /* Estilos de Grades (Cards) */
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .produto-card-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-left: 4px solid var(--secondary); }
+    .produto-card-header { display: flex; gap: 0.8rem; align-items: center; }
+
     .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
     .status-ok { background: #dcfce7; color: #166534; }
     .status-atencao { background: #fef9c3; color: #854d0e; }
     .status-urgente { background: #fee2e2; color: #991b1b; }
+    
     #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; }
+    .img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    .img-card { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    
+    #modalRelatorio { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 1rem; }
+    .modal-content { background: white; padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem; border-top: 5px solid var(--secondary); }
+    .modal-content textarea { width: 100%; height: 150px; padding: 0.5rem; font-size: 0.9rem; border: 1px solid var(--border); border-radius: 4px; resize: none; }
+    
+    .alerta-banner { background: #fff7ed; border: 1px solid #ffedd5; color: #c2410c; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none; font-weight: 600; text-align: center; border-left: 4px solid var(--secondary); }
   </style>
 </head>
 <body>
   <header>
-    <h1>ValidadeSmart - Hadar33</h1>
-    <p>Gestão de estoque, precificação dinâmica e controle por validade (Nuvem Firebase)</p>
+    <h1>ValidadeSmart</h1>
+    <p>Gestão inteligente de estoque, precificação dinâmica e controle de validades na nuvem</p>
   </header>
+
+  <!-- Banner de Alerta Automático para Produtos Próximos do Vencimento -->
+  <div id="bannerAlerta" class="alerta-banner">
+    ⚠️ Atenção! Existem produtos com validade próxima (≤ 15 dias) ou vencidos no estoque! Verifique os itens abaixo.
+  </div>
 
   <!-- Leitor de Câmera -->
   <div class="card" style="text-align: center;">
-    <button type="button" class="btn-secondary" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Ler Código de Barras</button>
+    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Ler Código de Barras</button>
     <div id="reader"></div>
   </div>
 
   <div class="card">
-    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Cadastrar Novo Produto</h2>
+    <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">Cadastrar Novo Produto</h2>
     <form id="formProduto" onsubmit="salvarProdutoNuvem(event)">
       <div class="form-grid">
         <div class="input-group">
@@ -111,6 +143,10 @@
         <div class="input-group">
           <label for="marca">Marca</label>
           <input type="text" id="marca">
+        </div>
+        <div class="input-group">
+          <label for="fotoProduto">Foto do Produto</label>
+          <input type="file" id="fotoProduto" accept="image/*" capture="environment">
         </div>
         <div class="input-group">
           <label for="dataValidade">Data de Validade</label>
@@ -141,40 +177,54 @@
           <input type="number" step="0.01" id="precoMinimo" required>
         </div>
       </div>
-      <button type="submit">Salvar na Nuvem</button>
+      <button type="submit" class="btn-laranja" style="width: 100%; padding: 0.8rem; font-size: 1rem;">Salvar Produto na Nuvem</button>
     </form>
   </div>
 
+  <!-- Painel de Gráfico de Promoções Mês a Mês -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="font-size: 1.2rem;">Estoque Monitorado (Nuvem)</h2>
-      <button type="button" class="btn-secondary" onclick="compartilharRelatorioUrgente()">📤 Copiar Relatório para WhatsApp</button>
+    <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary);">📊 Histórico Mensal de Produtos em Promoção / Atenção</h2>
+    <div style="position: relative; height: 250px; width: 100%;">
+      <canvas id="graficoPromocoes"></canvas>
     </div>
-    <div style="overflow-x: auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Validade</th>
-            <th>Qtd Loja</th>
-            <th>Qtd Estoque (Cx + Un)</th>
-            <th>Preço Sugerido</th>
-            <th>Status</th>
-            <th>Ações / Movimentação</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaProdutos">
-          <tr><td colspan="7" style="text-align: center;">Carregando dados da nuvem...</td></tr>
-        </tbody>
-      </table>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <h2 style="font-size: 1.2rem; color: var(--primary);">Estoque Monitorado</h2>
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <!-- Botões de Alternância de Visualização -->
+        <button type="button" id="btnModoLista" style="background: var(--primary); padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="mudarVisualizacao('lista')">📋 Lista</button>
+        <button type="button" id="btnModoGrade" style="background: #94a3b8; padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="mudarVisualizacao('grade')">🔲 Grades</button>
+        <button type="button" class="btn-laranja" style="padding: 0.5rem 0.8rem; font-size: 0.85rem;" onclick="gerarRelatorioModal()">📤 WhatsApp</button>
+      </div>
+    </div>
+
+    <!-- Área de Exibição Dinâmica (Lista ou Grades) -->
+    <div id="containerProdutos">
+      <!-- Conteúdo injetado via JavaScript -->
+    </div>
+  </div>
+
+  <!-- Modal para exibir o texto pronto para cópia segura -->
+  <div id="modalRelatorio">
+    <div class="modal-content">
+      <h3 style="color: var(--primary);">Relatório de Validades</h3>
+      <p style="font-size: 0.85rem; color: #64748b;">Selecione o texto abaixo, clique em "Copiar", e cole no seu WhatsApp:</p>
+      <textarea id="textoRelatorio" readonly></textarea>
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button type="button" style="background: #64748b;" onclick="fecharModal()">Fechar</button>
+        <button type="button" class="btn-laranja" onclick="copiarTextoModal()">📋 Copiar Texto</button>
+      </div>
     </div>
   </div>
 
   <script>
     let produtosBD = [];
     let html5QrCode;
+    let meuGrafico = null;
+    let modoVisualizacao = 'lista';
 
-    // Função para carregar produtos do Firestore
     async function carregarProdutosNuvem() {
       try {
         const querySnapshot = await window.getDocs(window.collection(window.db, "produtos"));
@@ -183,12 +233,47 @@
           produtosBD.push({ idDoc: docSnap.id, ...docSnap.data() });
         });
         renderizarProdutos();
+        atualizarGraficoMensal();
+        verificarAlertasAutomaticos();
       } catch (error) {
         console.error("Erro ao carregar do Firebase:", error);
       }
     }
 
-    // Função para salvar produto no Firestore
+    function mudarVisualizacao(modo) {
+      modoVisualizacao = modo;
+      document.getElementById('btnModoLista').style.background = modo === 'lista' ? 'var(--primary)' : '#94a3b8';
+      document.getElementById('btnModoGrade').style.background = modo === 'grade' ? 'var(--primary)' : '#94a3b8';
+      renderizarProdutos();
+    }
+
+    function verificarAlertasAutomaticos() {
+      const banner = document.getElementById('bannerAlerta');
+      let temAlerta = false;
+
+      produtosBD.forEach(p => {
+        const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
+        if (calc.classeUrgencia !== 'status-ok') {
+          temAlerta = true;
+        }
+      });
+
+      banner.style.display = temAlerta ? 'block' : 'none';
+    }
+
+    function converterImagemBase64(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) {
+          resolve('');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function salvarProdutoNuvem(e) {
       e.preventDefault();
       const unPorCx = parseInt(document.getElementById('unidadesPorCaixa').value) || 1;
@@ -196,11 +281,18 @@
       const soltas = parseInt(document.getElementById('qtdUnidadesSoltasEstoque').value) || 0;
       const totalEstoqueUnidades = (caixas * unPorCx) + soltas;
 
+      const inputFoto = document.getElementById('fotoProduto');
+      let fotoBase64 = '';
+      if (inputFoto.files && inputFoto.files[0]) {
+        fotoBase64 = await converterImagemBase64(inputFoto.files[0]);
+      }
+
       const produto = {
         codigo: document.getElementById('codigoBarra').value.trim(),
         nome: document.getElementById('nome').value.trim(),
         categoria: document.getElementById('categoria').value,
         marca: document.getElementById('marca').value.trim(),
+        foto: fotoBase64,
         validade: document.getElementById('dataValidade').value,
         qtdLoja: parseInt(document.getElementById('qtdLoja').value) || 0,
         unidadesPorCaixa: unPorCx,
@@ -222,7 +314,6 @@
       }
     }
 
-    // Alterar estoque diretamente no Firebase
     async function alterarEstoque(idDoc, tipoMovimento) {
       const p = produtosBD.find(item => item.idDoc === idDoc);
       if (!p) return;
@@ -265,7 +356,6 @@
       }
     }
 
-    // Excluir produto do Firebase
     async function excluirProduto(idDoc) {
       if (confirm("Deseja realmente excluir este produto da nuvem?")) {
         try {
@@ -339,42 +429,153 @@
     }
 
     function renderizarProdutos() {
-      const tbody = document.getElementById('tabelaProdutos');
-      tbody.innerHTML = '';
+      const container = document.getElementById('containerProdutos');
+      container.innerHTML = '';
       
       if (produtosBD.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748b;">Nenhum produto cadastrado na nuvem.</td></tr>`;
+        container.innerHTML = `<p style="text-align: center; color: #64748b; padding: 2rem;">Nenhum produto cadastrado na nuvem.</p>`;
         return;
       }
 
+      if (modoVisualizacao === 'lista') {
+        let htmlTabela = `
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Foto</th>
+                  <th>Produto</th>
+                  <th>Validade</th>
+                  <th>Qtd Loja</th>
+                  <th>Qtd Estoque (Cx + Un)</th>
+                  <th>Preço Sugerido</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        produtosBD.forEach(p => {
+          const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
+          const imgTag = p.foto ? `<img src="${p.foto}" class="img-thumb">` : `<span style="color:#cbd5e1; font-size:0.8rem;">Sem foto</span>`;
+          htmlTabela += `
+            <tr>
+              <td>${imgTag}</td>
+              <td><strong>${p.nome}</strong><br><small style="color:#64748b">${p.marca || 'Sem marca'} - ${p.categoria}</small></td>
+              <td>${p.validade}</td>
+              <td><strong>${p.qtdLoja}</strong> un.</td>
+              <td>${p.qtdCaixasEstoque} cx(s) + ${p.qtdUnidadesSoltasEstoque} un.<br><small style="color:#64748b">(Total: ${p.totalEstoque} un.)</small></td>
+              <td><strong>R$ ${calc.precoSugerido}</strong></td>
+              <td><span class="badge ${calc.classeUrgencia}">${calc.mensagemStatus}</span></td>
+              <td>
+                <button class="btn-laranja btn-mini" onclick="alterarEstoque('${p.idDoc}', 'repor')">Repor (+)</button>
+                <button style="background:#d97706;" class="btn-mini" onclick="alterarEstoque('${p.idDoc}', 'retirarLoja')">Retirar (-)</button><br>
+                <button style="background:#ef4444;" class="btn-mini" onclick="excluirProduto('${p.idDoc}')">Excluir</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        htmlTabela += `</tbody></table></div>`;
+        container.innerHTML = htmlTabela;
+
+      } else {
+        let htmlGrades = `<div class="grid-container">`;
+
+        produtosBD.forEach(p => {
+          const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
+          const imgTag = p.foto ? `<img src="${p.foto}" class="img-card">` : `<div style="width:60px; height:60px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#cbd5e1; font-size:0.7rem;">Sem foto</div>`;
+          
+          htmlGrades += `
+            <div class="produto-card-item">
+              <div class="produto-card-header">
+                ${imgTag}
+                <div>
+                  <strong>${p.nome}</strong>
+                  <br><small style="color:#64748b">${p.marca || 'Sem marca'} • ${p.categoria}</small>
+                </div>
+              </div>
+              <hr style="border:0; border-top:1px solid var(--border); margin:0.3rem 0;">
+              <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                <div>Validade: <strong>${p.validade}</strong></div>
+                <div>Loja: <strong>${p.qtdLoja} un.</strong> | Estoque: <strong>${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un</strong></div>
+                <div>Preço Sugerido: <strong>R$ ${calc.precoSugerido}</strong></div>
+                <div>Status: <span class="badge ${calc.classeUrgencia}">${calc.mensagemStatus}</span></div>
+              </div>
+              <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                <button class="btn-laranja btn-mini" style="flex:1;" onclick="alterarEstoque('${p.idDoc}', 'repor')">Repor (+)</button>
+                <button style="background:#d97706; flex:1;" class="btn-mini" onclick="alterarEstoque('${p.idDoc}', 'retirarLoja')">Retirar (-)</button>
+                <button style="background:#ef4444;" class="btn-mini" onclick="excluirProduto('${p.idDoc}')">Excluir</button>
+              </div>
+            </div>
+          `;
+        });
+
+        htmlGrades += `</div>`;
+        container.innerHTML = htmlGrades;
+      }
+    }
+
+    function atualizarGraficoMensal() {
+      const mesesContagem = {};
+
       produtosBD.forEach(p => {
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${p.nome}</strong><br><small style="color:#64748b">${p.marca || 'Sem marca'} - ${p.categoria}</small></td>
-          <td>${p.validade}</td>
-          <td><strong>${p.qtdLoja}</strong> un.</td>
-          <td>${p.qtdCaixasEstoque} cx(s) + ${p.qtdUnidadesSoltasEstoque} un.<br><small style="color:#64748b">(Total: ${p.totalEstoque} un.)</small></td>
-          <td><strong>R$ ${calc.precoSugerido}</strong></td>
-          <td><span class="badge ${calc.classeUrgencia}">${calc.mensagemStatus}</span></td>
-          <td>
-            <button class="btn-secondary btn-mini" onclick="alterarEstoque('${p.idDoc}', 'repor')" title="Mover 1 unidade do estoque para a loja">Repor Loja (+)</button>
-            <button style="background:#d97706;" class="btn-mini" onclick="alterarEstoque('${p.idDoc}', 'retirarLoja')" title="Devolver 1 unidade da loja para o estoque">Retirar Loja (-)</button><br>
-            <button style="background:#ef4444;" class="btn-mini" onclick="excluirProduto('${p.idDoc}')">Excluir</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
+        if (calc.classeUrgencia !== 'status-ok') {
+          const partesData = p.validade.split('-');
+          if (partesData.length === 3) {
+            const anoMes = `${partesData[1]}/${partesData[0]}`;
+            mesesContagem[anoMes] = (mesesContagem[anoMes] || 0) + 1;
+          }
+        }
+      });
+
+      const mesesOrdenados = Object.keys(mesesContagem).sort();
+      const valores = mesesOrdenados.map(mes => mesesContagem[mes]);
+
+      const ctx = document.getElementById('graficoPromocoes').getContext('2d');
+      
+      if (meuGrafico) {
+        meuGrafico.destroy();
+      }
+
+      meuGrafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: mesesOrdenados.length > 0 ? mesesOrdenados : ['Nenhum registro'],
+          datasets: [{
+            label: 'Produtos que exigem Promoção / Atenção',
+            data: valores.length > 0 ? valores : [0],
+            backgroundColor: '#f97316',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            }
+          }
+        }
       });
     }
 
-    function compartilharRelatorioUrgente() {
-      let mensagem = "🚨 *Relatório de Validades - Hadar33* 🚨\n\n";
+    function gerarRelatorioModal() {
+      let mensagem = "🚨 *Relatório de Validades - ValidadeSmart* 🚨\n\n";
       let temItens = false;
       produtosBD.forEach(p => {
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
         if (calc.classeUrgencia !== 'status-ok') {
           temItens = true;
-          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
+          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n`;
+          if (p.foto) {
+            mensagem += `  📸 [Foto anexada no sistema]\n`;
+          }
+          mensagem += `\n`;
         }
       });
 
@@ -383,13 +584,28 @@
         return;
       }
 
-      // Solução definitiva para WebView do Android: Copia automaticamente para a memória do celular
-      navigator.clipboard.writeText(mensagem).then(() => {
-        alert("✅ Relatório copiado com sucesso!\n\nAgora basta abrir o WhatsApp e colar (pressionar a tela e clicar em 'Colar') na conversa desejada.");
-      }).catch(err => {
-        console.error("Erro ao copiar:", err);
-        prompt("Copie o texto abaixo manualmente:", mensagem);
-      });
+      document.getElementById('textoRelatorio').value = mensagem;
+      document.getElementById('modalRelatorio').style.display = 'flex';
+    }
+
+    function fecharModal() {
+      document.getElementById('modalRelatorio').style.display = 'none';
+    }
+
+    function copiarTextoModal() {
+      const textarea = document.getElementById('textoRelatorio');
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      try {
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          alert("✅ Texto copiado com sucesso! Agora é só colar no WhatsApp.");
+          fecharModal();
+        });
+      } catch (err) {
+        document.execCommand('copy');
+        alert("✅ Texto copiado! Cole no WhatsApp.");
+        fecharModal();
+      }
     }
   </script>
 </body>
