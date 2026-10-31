@@ -148,7 +148,7 @@
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
       <h2 style="font-size: 1.2rem;">Estoque Monitorado (Nuvem)</h2>
-      <button type="button" class="btn-secondary" onclick="compartilharRelatorioUrgente()">📤 Compartilhar Alertas (WhatsApp)</button>
+      <button type="button" class="btn-secondary" onclick="compartilharRelatorioUrgente()">📤 Copiar Relatório para WhatsApp</button>
     </div>
     <div style="overflow-x: auto;">
       <table>
@@ -369,22 +369,27 @@
 
     function compartilharRelatorioUrgente() {
       let mensagem = "🚨 *Relatório de Validades - Hadar33* 🚨\n\n";
+      let temItens = false;
       produtosBD.forEach(p => {
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
         if (calc.classeUrgencia !== 'status-ok') {
+          temItens = true;
           mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
         }
       });
 
-      // Correção do erro de protocolo (utilizando wa.me com abertura controlada via link temporário)
-      const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!temItens) {
+        alert("Nenhum produto em situação de atenção ou vencido para relatar!");
+        return;
+      }
+
+      // Solução definitiva para WebView do Android: Copia automaticamente para a memória do celular
+      navigator.clipboard.writeText(mensagem).then(() => {
+        alert("✅ Relatório copiado com sucesso!\n\nAgora basta abrir o WhatsApp e colar (pressionar a tela e clicar em 'Colar') na conversa desejada.");
+      }).catch(err => {
+        console.error("Erro ao copiar:", err);
+        prompt("Copie o texto abaixo manualmente:", mensagem);
+      });
     }
   </script>
 </body>
