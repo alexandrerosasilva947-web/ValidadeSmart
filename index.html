@@ -87,7 +87,7 @@
     .status-atencao { background: #fef9c3; color: #854d0e; }
     .status-urgente { background: #fee2e2; color: #991b1b; }
     
-    #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; }
+    #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; background: #000; }
     
     #modalRelatorio { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 1rem; }
     .modal-content { background: white; padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem; border-top: 5px solid var(--secondary); }
@@ -107,7 +107,7 @@
     ⚠️ Atenção! Existem produtos com validade próxima (≤ 15 dias) ou vencidos no estoque! Verifique os itens abaixo.
   </div>
 
-  <!-- Leitor de Câmera para Código de Barras -->
+  <!-- Leitor de Câmera para Código de Barras com Permissão Ativa -->
   <div class="card" style="text-align: center;">
     <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Escanear Código de Barras</button>
     <div id="reader"></div>
@@ -357,30 +357,40 @@
       }
     }
 
-    // Leitor de Câmera via Html5Qrcode para Código de Barras
-    function iniciarLeitorCamera() {
+    // Função de Câmera com Requisição Explícita de Permissão do Navegador
+    async function iniciarLeitorCamera() {
       const readerDiv = document.getElementById('reader');
       readerDiv.style.display = 'block';
       
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
+      try {
+        // Solicita explicitamente a permissão de vídeo ao sistema do celular antes de ligar a câmera
+        await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
 
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 100 } },
-        (decodedText) => {
-          document.getElementById('codigoBarra').value = decodedText;
-          buscarDadosBarcode(decodedText);
-          html5QrCode.stop().then(() => {
-            readerDiv.style.display = 'none';
-          }).catch(err => console.log(err));
-        },
-        (errorMessage) => {}
-      ).catch((err) => {
-        alert("Erro ao acessar a câmera. Verifique se o aplicativo tem permissão de uso de câmera.");
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
+        }
+
+        if (html5QrCode.isScanning) {
+          await html5QrCode.stop();
+        }
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 100 } },
+          (decodedText) => {
+            document.getElementById('codigoBarra').value = decodedText;
+            buscarDadosBarcode(decodedText);
+            html5QrCode.stop().then(() => {
+              readerDiv.style.display = 'none';
+            }).catch(err => console.log(err));
+          },
+          (errorMessage) => {}
+        );
+      } catch (err) {
+        console.error("Erro de permissão ou acesso à câmera:", err);
+        alert("⚠️ Permissão de câmera negada ou indisponível.\n\nPor favor, verifique se o seu aplicativo possui permissão de uso de câmera nas configurações de aplicativos do seu celular.");
         readerDiv.style.display = 'none';
-      });
+      }
     }
 
     function calcularPrecificacao(validadeStr, precoNormal, precoMinimo) {
