@@ -342,6 +342,7 @@
       }
     }
 
+    // Função que busca automaticamente o nome e a marca pelo código de barras
     async function buscarDadosBarcode(codigo) {
       if (!codigo) return;
       try {
@@ -357,13 +358,12 @@
       }
     }
 
-    // Leitor de Câmera Real via Html5Qrcode com Solicitação de Permissão Ativa
+    // Leitor de Câmera Real em Tempo Real com Permissão Ativa
     async function iniciarLeitorCamera() {
       const readerDiv = document.getElementById('reader');
       readerDiv.style.display = 'block';
       
       try {
-        // Solicita permissão ativa de vídeo ao navegador/WebView antes de iniciar
         await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
 
         if (!html5QrCode) {
@@ -374,18 +374,27 @@
           await html5QrCode.stop();
         }
 
-        await html5QrCode.start(
+        html5QrCode.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 100 } },
           (decodedText) => {
+            // 1. Insere o código de barras capturado automaticamente no campo
             document.getElementById('codigoBarra').value = decodedText;
+            
+            // 2. Dispara a busca automática das informações do produto
             buscarDadosBarcode(decodedText);
+            
+            // 3. Fecha a câmera e esconde o leitor
             html5QrCode.stop().then(() => {
               readerDiv.style.display = 'none';
             }).catch(err => console.log(err));
           },
           (errorMessage) => {}
-        );
+        ).catch((err) => {
+          alert("Erro ao iniciar o leitor de câmera. Verifique as permissões de vídeo.");
+          readerDiv.style.display = 'none';
+        });
+
       } catch (err) {
         console.error("Erro de permissão ou acesso à câmera:", err);
         alert("⚠️ Permissão de câmera negada ou indisponível.\n\nVerifique se o seu celular permitiu o uso da câmera para o aplicativo.");
