@@ -81,7 +81,6 @@
     /* Estilos de Grades (Cards) */
     .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
     .produto-card-item { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border-left: 4px solid var(--secondary); }
-    .produto-card-header { display: flex; gap: 0.8rem; align-items: center; }
 
     .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
     .status-ok { background: #dcfce7; color: #166534; }
@@ -89,8 +88,6 @@
     .status-urgente { background: #fee2e2; color: #991b1b; }
     
     #reader { width: 100%; max-width: 400px; margin: 0 auto 1rem auto; display: none; border-radius: 8px; overflow: hidden; }
-    .img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
-    .img-card { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
     
     #modalRelatorio { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 1rem; }
     .modal-content { background: white; padding: 1.5rem; border-radius: 8px; width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem; border-top: 5px solid var(--secondary); }
@@ -112,7 +109,7 @@
 
   <!-- Leitor de Câmera para Código de Barras -->
   <div class="card" style="text-align: center;">
-    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Leitor de Código de Barras</button>
+    <button type="button" class="btn-laranja" onclick="iniciarLeitorCamera()">📷 Abrir Câmera para Escanear Código de Barras</button>
     <div id="reader"></div>
   </div>
 
@@ -122,7 +119,7 @@
       <div class="form-grid">
         <div class="input-group">
           <label for="codigoBarra">Código de Barras</label>
-          <input type="text" id="codigoBarra" placeholder="Digite ou escaneie" onblur="buscarDadosBarcode(this.value)">
+          <input type="text" id="codigoBarra" placeholder="Escaneie ou digite" onblur="buscarDadosBarcode(this.value)" required>
         </div>
         <div class="input-group">
           <label for="nome">Nome do Produto</label>
@@ -143,10 +140,6 @@
         <div class="input-group">
           <label for="marca">Marca</label>
           <input type="text" id="marca">
-        </div>
-        <div class="input-group">
-          <label for="fotoProduto">Foto do Produto (Opcional)</label>
-          <input type="file" id="fotoProduto" accept="image/*" capture="environment">
         </div>
         <div class="input-group">
           <label for="dataValidade">Data de Validade</label>
@@ -261,19 +254,6 @@
       banner.style.display = temAlerta ? 'block' : 'none';
     }
 
-    function converterImagemBase64(file) {
-      return new Promise((resolve, reject) => {
-        if (!file) {
-          resolve('');
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
-    }
-
     async function salvarProdutoNuvem(e) {
       e.preventDefault();
       const unPorCx = parseInt(document.getElementById('unidadesPorCaixa').value) || 1;
@@ -281,18 +261,11 @@
       const soltas = parseInt(document.getElementById('qtdUnidadesSoltasEstoque').value) || 0;
       const totalEstoqueUnidades = (caixas * unPorCx) + soltas;
 
-      const inputFoto = document.getElementById('fotoProduto');
-      let fotoBase64 = '';
-      if (inputFoto.files && inputFoto.files[0]) {
-        fotoBase64 = await converterImagemBase64(inputFoto.files[0]);
-      }
-
       const produto = {
         codigo: document.getElementById('codigoBarra').value.trim(),
         nome: document.getElementById('nome').value.trim(),
         categoria: document.getElementById('categoria').value,
         marca: document.getElementById('marca').value.trim(),
-        foto: fotoBase64,
         validade: document.getElementById('dataValidade').value,
         qtdLoja: parseInt(document.getElementById('qtdLoja').value) || 0,
         unidadesPorCaixa: unPorCx,
@@ -357,7 +330,6 @@
       }
     }
 
-    // Função de Exclusão Corrigida (Usa o idDoc corretamente)
     async function excluirProduto(idDoc) {
       if (confirm("Deseja realmente excluir este produto da nuvem?")) {
         try {
@@ -385,7 +357,7 @@
       }
     }
 
-    // Leitor de Câmera Real via Html5Qrcode
+    // Leitor de Câmera via Html5Qrcode para Código de Barras
     function iniciarLeitorCamera() {
       const readerDiv = document.getElementById('reader');
       readerDiv.style.display = 'block';
@@ -448,7 +420,6 @@
             <table>
               <thead>
                 <tr>
-                  <th>Foto</th>
                   <th>Produto</th>
                   <th>Validade</th>
                   <th>Qtd Loja</th>
@@ -463,11 +434,9 @@
 
         produtosBD.forEach(p => {
           const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
-          const imgTag = p.foto ? `<img src="${p.foto}" class="img-thumb">` : `<span style="color:#cbd5e1; font-size:0.8rem;">Sem foto</span>`;
           htmlTabela += `
             <tr>
-              <td>${imgTag}</td>
-              <td><strong>${p.nome}</strong><br><small style="color:#64748b">${p.marca || 'Sem marca'} - ${p.categoria}</small></td>
+              <td><strong>${p.nome}</strong><br><small style="color:#64748b">Cód: ${p.codigo || 'N/A'} - ${p.marca || 'Sem marca'} (${p.categoria})</small></td>
               <td>${p.validade}</td>
               <td><strong>${p.qtdLoja}</strong> un.</td>
               <td>${p.qtdCaixasEstoque} cx(s) + ${p.qtdUnidadesSoltasEstoque} un.<br><small style="color:#64748b">(Total: ${p.totalEstoque} un.)</small></td>
@@ -490,16 +459,12 @@
 
         produtosBD.forEach(p => {
           const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
-          const imgTag = p.foto ? `<img src="${p.foto}" class="img-card">` : `<div style="width:60px; height:60px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#cbd5e1; font-size:0.7rem;">Sem foto</div>`;
           
           htmlGrades += `
             <div class="produto-card-item">
-              <div class="produto-card-header">
-                ${imgTag}
-                <div>
-                  <strong>${p.nome}</strong>
-                  <br><small style="color:#64748b">${p.marca || 'Sem marca'} • ${p.categoria}</small>
-                </div>
+              <div>
+                <strong>${p.nome}</strong>
+                <br><small style="color:#64748b">Cód: ${p.codigo || 'N/A'} • ${p.marca || 'Sem marca'} • ${p.categoria}</small>
               </div>
               <hr style="border:0; border-top:1px solid var(--border); margin:0.3rem 0;">
               <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.2rem;">
@@ -576,11 +541,7 @@
         const calc = calcularPrecificacao(p.validade, p.precoNormal, p.precoMinimo);
         if (calc.classeUrgencia !== 'status-ok') {
           temItens = true;
-          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n`;
-          if (p.foto) {
-            mensagem += `  📸 [Foto anexada no sistema]\n`;
-          }
-          mensagem += `\n`;
+          mensagem += `• *${p.nome}* (${p.categoria})\n  Validade: ${p.validade} [${calc.mensagemStatus}]\n  Loja: ${p.qtdLoja} un. | Estoque: ${p.qtdCaixasEstoque}cx + ${p.qtdUnidadesSoltasEstoque}un\n  Preço Sugerido: R$ ${calc.precoSugerido}\n\n`;
         }
       });
 
